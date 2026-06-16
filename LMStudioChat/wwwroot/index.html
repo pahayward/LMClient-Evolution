@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evolution Q&amp;A — LM Studio Chat</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    header .icon { font-size: 1.5rem; flex-shrink: 0; }
+
+    header .titles { flex: 1; }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    header .subtitle {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.1rem;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #0f3460;
+      border: 1px solid #1d4ed8;
+      border-radius: 0.5rem;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.7rem;
+      color: #93c5fd;
+      white-space: nowrap;
+    }
+
+    .badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      display: flex;
+      gap: 0.75rem;
+      max-width: 820px;
+      width: 100%;
+    }
+
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message.assistant { align-self: flex-start; }
+
+    .avatar {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .message.user .avatar { background: #3b82f6; }
+    .message.assistant .avatar { background: #7c3aed; }
+    .message.tool-call .avatar { background: #0f766e; }
+
+    .bubble {
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      line-height: 1.6;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .message.user .bubble {
+      background: #3b82f6;
+      color: white;
+      border-bottom-right-radius: 0.25rem;
+    }
+
+    .message.assistant .bubble {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    .message.tool-call .bubble {
+      background: #134e4a;
+      border: 1px solid #0d9488;
+      color: #99f6e4;
+      font-size: 0.78rem;
+      font-family: monospace;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    .message.error .bubble {
+      background: #450a0a;
+      border: 1px solid #991b1b;
+      color: #fca5a5;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .dot-anim {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #64748b;
+      animation: bounce 1.2s infinite;
+    }
+    .dot-anim:nth-child(2) { animation-delay: 0.2s; }
+    .dot-anim:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
+    }
+
+    #input-area {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #334155;
+      background: #1e293b;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    #message-input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      color: #e2e8f0;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: none;
+      max-height: 8rem;
+      line-height: 1.5;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #message-input:focus { border-color: #3b82f6; }
+    #message-input::placeholder { color: #475569; }
+
+    #send-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    #send-btn:hover:not(:disabled) { background: #2563eb; }
+    #send-btn:active:not(:disabled) { transform: scale(0.95); }
+    #send-btn:disabled { background: #334155; cursor: not-allowed; }
+
+    #send-btn svg { width: 1.1rem; height: 1.1rem; }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0 1.5rem 1rem;
+    }
+
+    .suggestion-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 1rem;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .suggestion-btn:hover {
+      border-color: #3b82f6;
+      color: #93c5fd;
+    }
+
+    .suggestion-btn.booking {
+      border-color: #0d9488;
+      color: #5eead4;
+    }
+
+    .suggestion-btn.booking:hover {
+      border-color: #14b8a6;
+      color: #99f6e4;
+    }
+
+    #empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 0.5rem;
+      color: #475569;
+      user-select: none;
+    }
+
+    #empty-state .big-icon { font-size: 3rem; }
+    #empty-state p { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="icon">🧬</div>
+    <div class="titles">
+      <h1>Evolution Q&amp;A</h1>
+      <div class="subtitle">Ask about evolution · Book a session with an expert</div>
+    </div>
+    <div class="badge">
+      <div class="dot"></div>
+      Booking agent active
+    </div>
+  </header>
+
+  <div id="chat-container">
+    <div id="empty-state">
+      <div class="big-icon">🦕</div>
+      <p>Ask about the theory of evolution, or book a slot with our expert.</p>
+    </div>
+  </div>
+
+  <div class="suggestions" id="suggestions">
+    <button class="suggestion-btn">What is natural selection?</button>
+    <button class="suggestion-btn">What evidence exists for evolution?</button>
+    <button class="suggestion-btn">How does speciation work?</button>
+    <button class="suggestion-btn">What is genetic drift?</button>
+    <button class="suggestion-btn booking">📅 Book a session with an expert</button>
+  </div>
+
+  <div id="input-area">
+    <textarea
+      id="message-input"
+      placeholder="Ask about evolution, or type 'book a session'…"
+      rows="1"
+    ></textarea>
+    <button id="send-btn" title="Send">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
+  <script>
+    const chatContainer = document.getElementById('chat-container');
+    const emptyState = document.getElementById('empty-state');
+    const input = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const suggestions = document.getElementById('suggestions');
+
+    // Conversation history for multi-turn context (user/assistant turns only)
+    const history = [];
+
+    function removeEmptyState() {
+      if (emptyState.parentNode) emptyState.remove();
+    }
+
+    function appendMessage(role, text, cls) {
+      removeEmptyState();
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `message ${cls ?? role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = role === 'user' ? '👤' : role === 'tool-call' ? '🔧' : '🤖';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(bubble);
+      chatContainer.appendChild(wrapper);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      return bubble;
+    }
+
+    function showTyping() {
+      removeEmptyState();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'message assistant';
+      wrapper.id = 'typing';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = '🤖';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble typing-indicator';
+      for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'dot-anim';
+        bubble.appendChild(dot);
+      }
+
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(bubble);
+      chatContainer.appendChild(wrapper);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function removeTyping() {
+      document.getElementById('typing')?.remove();
+    }
+
+    async function sendMessage(text) {
+      text = text.trim();
+      if (!text) return;
+
+      suggestions.style.display = 'none';
+      appendMessage('user', text);
+      input.value = '';
+      input.style.height = 'auto';
+      sendBtn.disabled = true;
+      showTyping();
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history })
+        });
+
+        const data = await res.json();
+        removeTyping();
+
+        if (!res.ok) {
+          const errMsg = data.detail || data.error || `Server error ${res.status}`;
+          appendMessage('assistant', '⚠️ ' + errMsg, 'error');
+          return;
+        }
+
+        const reply = data.reply;
+        appendMessage('assistant', reply);
+
+        // Store turn in history for multi-turn context
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: reply });
+
+        // Keep last 20 messages (10 turns) to avoid oversized payloads
+        if (history.length > 20) history.splice(0, 2);
+
+      } catch (err) {
+        removeTyping();
+        appendMessage('assistant', '⚠️ Network error: ' + err.message, 'error');
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    // Auto-grow textarea
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 128) + 'px';
+    });
+
+    // Send on Enter (Shift+Enter = newline)
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage(input.value);
+      }
+    });
+
+    sendBtn.addEventListener('click', () => sendMessage(input.value));
+
+    document.querySelectorAll('.suggestion-btn').forEach(btn => {
+      btn.addEventListener('click', () => sendMessage(btn.textContent.replace('📅 ', '')));
+    });
+  </script>
+</body>
+</html>
