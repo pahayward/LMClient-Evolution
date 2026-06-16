@@ -118,12 +118,13 @@ The application runs fully locally. Tested on the following machine:
 | **CPU** | AMD Ryzen 7 PRO 6850H (8 cores / 16 threads, 3.2 GHz base) |
 | **RAM** | 32 GB |
 | **Integrated GPU** | AMD Radeon Graphics (integrated, shared memory) |
-| **Discrete GPU** | NVIDIA GeForce RTX 5060 Ti (8 GB VRAM) |
+| **Discrete GPU** | NVIDIA GeForce RTX 5060 Ti (16 GB VRAM) |
 | **OS** | Windows 11 Pro |
 | **Runtime** | .NET 9 |
 | **LLM host** | LM Studio (local server on port 1234) |
+| **Model** | Gemma 4B with expanded context window |
 
-> The RTX 5060 Ti handles LLM inference in LM Studio via CUDA, enabling fast local responses without cloud dependency.
+> The RTX 5060 Ti (16 GB VRAM) handles LLM inference in LM Studio via CUDA. The expanded context window on Gemma 4B is important here — it allows the full evolution document to be injected into the system prompt without truncation.
 
 ---
 
@@ -134,6 +135,7 @@ The application runs fully locally. Tested on the following machine:
 - [.NET 9 SDK](https://dotnet.microsoft.com/download)
 - [LM Studio](https://lmstudio.ai) with a model loaded and the local server running on `http://localhost:1234`
   - The model must support **function calling / tool use**
+  - Tested with **Gemma 4B** with an expanded context window
 
 ### Run
 
